@@ -157,7 +157,11 @@ export default function InventoryPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
                         <span className={`text-sm font-bold ${product.stock <= product.minStock ? 'text-red-400' : 'text-white'}`}>{product.stock}</span>
-                        {product.stock <= product.minStock && (<AlertCircle className="w-4 h-4 text-red-400" title="Stock bajo" />)}
+                        {product.stock <= product.minStock && (
+  <span title="Stock bajo" className="flex items-center">
+    <AlertCircle className="w-4 h-4 text-red-400" />
+  </span>
+)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
