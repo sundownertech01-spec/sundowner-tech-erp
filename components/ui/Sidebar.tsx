@@ -31,7 +31,6 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
     { name: "Herramientas", href: "/dashboard/tools", icon: Wrench },
     { name: "Ventas", href: "/dashboard/sales", icon: ShoppingCart },
     { name: "Clientes", href: "/dashboard/clients", icon: Users },
-    { name: "Movimientos", href: "/dashboard/movements", icon: CreditCard },
     { name: "Configuración", href: "/dashboard/settings", icon: Settings },
   ];
 
