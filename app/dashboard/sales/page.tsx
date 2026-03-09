@@ -2,18 +2,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link"; // <-- IMPORTANTE PARA EL BOTÓN DE IMPRIMIR
+import Link from "next/link";
 import {
   FileText,
   ShoppingCart,
   Search,
-  Calendar,
-  DollarSign,
+  DollarSign, // Puedes quitar Calendar si ya no lo usas, pero no estorba
   Loader2,
   Trash2,
   Edit,
   Plus,
-  Printer // <-- NUEVO ICONO DE IMPRESORA
+  Printer
 } from "lucide-react";
 import NewSaleModal from "@/components/sales/NewSaleModal";
 import NewQuoteModal from "@/components/sales/NewQuoteModal";
@@ -63,6 +62,24 @@ export default function SalesPage() {
     });
     return () => unsubscribe();
   }, []);
+
+  // --- EL ESCUDO ANTI-CRASHES ---
+  // Esta función revisa cómo viene la fecha y la formatea sin romper la página
+  const formatSafeDate = (dateObj: any) => {
+    if (!dateObj) return "Sin fecha";
+    
+    // 1. Si es el formato nuevo (Timestamp de Firebase)
+    if (typeof dateObj.toDate === 'function') {
+      return dateObj.toDate().toLocaleDateString("es-MX", { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+    }
+    
+    // 2. Si es un dato viejo (texto o número)
+    try {
+      return new Date(dateObj).toLocaleDateString("es-MX", { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+    } catch (e) {
+      return "Fecha inválida";
+    }
+  };
 
   const handleDelete = async (sale: SaleRecord) => {
     try {
@@ -144,8 +161,9 @@ export default function SalesPage() {
     }
   };
 
+  // Escudo anti-crash para la búsqueda (por si clientName viene vacío)
   const filteredSales = sales.filter((sale) =>
-    sale.clientName.toLowerCase().includes(searchTerm.toLowerCase()),
+    (sale.clientName || "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -227,10 +245,11 @@ export default function SalesPage() {
                   {filteredSales.map((sale) => (
                     <tr key={sale.id} className="hover:bg-slate-800/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                        {sale.date?.toDate().toLocaleDateString("es-MX", { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' })}
+                        {/* USAMOS EL ESCUDO AQUÍ */}
+                        {formatSafeDate(sale.date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                        {sale.clientName}
+                        {sale.clientName || "Sin nombre"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
@@ -238,16 +257,16 @@ export default function SalesPage() {
                           sale.type === "cotizacion" ? "bg-slate-800 text-slate-300 border-slate-700" :
                           "bg-emerald-900/30 text-emerald-400 border-emerald-800"
                         }`}>
-                          {sale.type.toUpperCase()}
+                          {(sale.type || "Desconocido").toUpperCase()}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-white">
-                        ${sale.total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                        {/* ESCUDO PARA EL TOTAL */}
+                        ${(sale.total || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-3">
                           
-                          {/* BOTÓN DE IMPRIMIR - PC */}
                           <Link 
                             href={`/dashboard/sales/print/${sale.id}`} 
                             target="_blank" 
@@ -277,15 +296,14 @@ export default function SalesPage() {
                 <div key={sale.id} className="p-4 space-y-3 hover:bg-slate-800/30">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="font-bold text-white">{sale.clientName}</h4>
+                      <h4 className="font-bold text-white">{sale.clientName || "Sin nombre"}</h4>
                       <span className="text-xs text-slate-500 block mt-0.5">
-                        {sale.date?.toDate().toLocaleDateString("es-MX", { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' })}
+                        {/* USAMOS EL ESCUDO AQUÍ */}
+                        {formatSafeDate(sale.date)}
                       </span>
                     </div>
-                    {/* BOTONES DE ACCIÓN MÓVIL */}
                     <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1 border border-slate-700/50 shrink-0">
                       
-                      {/* BOTÓN DE IMPRIMIR - MÓVIL */}
                       <Link 
                         href={`/dashboard/sales/print/${sale.id}`} 
                         target="_blank" 
@@ -307,10 +325,11 @@ export default function SalesPage() {
                           sale.type === "cotizacion" ? "bg-slate-800 text-slate-300 border-slate-700" :
                           "bg-emerald-900/30 text-emerald-400 border-emerald-800"
                         }`}>
-                      {sale.type.toUpperCase()}
+                      {(sale.type || "Desconocido").toUpperCase()}
                     </span>
                     <span className="text-sm font-bold text-emerald-400">
-                      ${sale.total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                       {/* ESCUDO PARA EL TOTAL */}
+                      ${(sale.total || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
