@@ -17,6 +17,7 @@ import {
   CreditCard,
   Wrench,
   ShieldCheck,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import Swal from "sweetalert2";
@@ -34,6 +35,7 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
     { name: "Clientes", href: "/dashboard/clients", icon: Users },
     { name: "Usuarios", href: "/dashboard/users", icon: ShieldCheck },
     { name: "Configuración", href: "/dashboard/settings", icon: Settings },
+    { name: "Gastos", href: "/dashboard/expenses", icon: Wallet },
   ];
 
   const handleLogout = async () => {
