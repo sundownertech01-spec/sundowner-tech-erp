@@ -3,7 +3,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { doc, getDoc } from "firebase/firestore";
+// IMPORTANTE: Agregamos collection, query, where, getDocs, limit
+import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader2, Printer } from "lucide-react";
 
@@ -17,23 +18,51 @@ export default function PrintSalePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // 1. Cargar la Venta
         const saleDoc = await getDoc(doc(db, "sales", id as string));
         if (!saleDoc.exists()) return;
         const saleData = saleDoc.data();
         
-        // FIX: ¡Aquí está la magia! Le inyectamos el ID manualmente a los datos
         setSale({ id: saleDoc.id, ...saleData });
 
+        // 2. Cargar la Configuración de la Empresa
         const settingsDoc = await getDoc(doc(db, "settings", "general"));
         if (settingsDoc.exists()) {
           setSettings(settingsDoc.data());
         }
 
-        setClient({
-          name: saleData.clientName,
-          phone: "Ver expediente",
-          address: "No especificada"
-        });
+        // 3. BUSCAR LOS DATOS REALES DEL CLIENTE
+        if (saleData.clientName && saleData.clientName !== "Público General") {
+          // Buscamos en la colección "clients" donde el nombre coincida exactamente
+          const q = query(collection(db, "clients"), where("name", "==", saleData.clientName), limit(1));
+          const clientSnap = await getDocs(q);
+          
+          if (!clientSnap.empty) {
+            const clientRealData = clientSnap.docs[0].data();
+            setClient({
+              name: clientRealData.name || saleData.clientName,
+              phone: clientRealData.phone || "Sin teléfono",
+              address: clientRealData.address || "Sin dirección registrada",
+              email: clientRealData.email || "Sin correo"
+            });
+          } else {
+            // Por si el cliente fue borrado después de la venta
+            setClient({
+              name: saleData.clientName,
+              phone: "No encontrado",
+              address: "No encontrado",
+              email: "No encontrado"
+            });
+          }
+        } else {
+          // Si es "Público General" o no tiene nombre
+          setClient({
+            name: saleData.clientName || "Público General",
+            phone: "N/A",
+            address: "Venta en mostrador",
+            email: "N/A"
+          });
+        }
 
       } catch (error) {
         console.error("Error cargando ticket:", error);
@@ -72,8 +101,13 @@ export default function PrintSalePage() {
         </div>
 
         <div className="flex justify-between items-center py-6 border-b-2 border-black">
-          <div className="w-32 h-32 rounded-full border-4 border-blue-500 flex items-center justify-center font-bold text-blue-500 text-center text-xs">
-            [LOGO SUNDOWNER]
+          {/* Logo de la empresa */}
+          <div className="w-32 h-32 flex items-center justify-center">
+            <img 
+              src="/logo.png" 
+              alt="Logo Sundowner Tech" 
+              className="w-full h-full object-contain"
+            />
           </div>
           
           <div className="text-center flex-1 px-4">
@@ -94,7 +128,6 @@ export default function PrintSalePage() {
           <div className="w-1/2 text-center py-1 border-r-2 border-black uppercase">Administrador</div>
           <div className="w-1/4 flex">
             <div className="w-1/2 bg-black text-white text-center py-1 border-r-2 border-white">Folio</div>
-            {/* FIX: Agregamos el signo de interrogación sale?.id?.substring... como escudo */}
             <div className="w-1/2 text-center py-1 text-red-600">{sale?.id?.substring(0, 6).toUpperCase()}</div>
           </div>
         </div>
@@ -107,10 +140,9 @@ export default function PrintSalePage() {
           <div className="border-r-2 border-black border-b-2 py-1 bg-gray-100 col-span-2">Teléfono</div>
           <div className="border-b-2 border-black py-1 bg-gray-100">Fecha</div>
           
-          <div className="border-r-2 border-black border-b-2 py-1 uppercase">{sale.clientName}</div>
+          <div className="border-r-2 border-black border-b-2 py-1 uppercase truncate px-1">{sale.clientName}</div>
           <div className="border-r-2 border-black border-b-2 py-1 col-span-2">{client?.phone}</div>
           <div className="border-b-2 border-black py-1">
-            {/* FIX: Escudo para la fecha de la impresión */}
             {sale.date && typeof sale.date.toDate === 'function' ? sale.date.toDate().toLocaleDateString("es-MX") : "Sin fecha"}
           </div>
 
@@ -118,8 +150,13 @@ export default function PrintSalePage() {
           <div className="border-r-2 border-black border-b-2 py-1 bg-gray-100">Correo Electrónico</div>
           <div className="border-b-2 border-black py-1 bg-gray-100">Forma de pago</div>
 
-          <div className="border-r-2 border-black py-1 col-span-2 uppercase text-xs">{client?.address}</div>
-          <div className="border-r-2 border-black py-1 uppercase text-xs">No registrado</div>
+          <div className="border-r-2 border-black py-1 col-span-2 uppercase text-xs px-2 flex items-center justify-center text-center">
+            {client?.address}
+          </div>
+          {/* AQUÍ INYECTAMOS EL CORREO ELECTRÓNICO REAL */}
+          <div className="border-r-2 border-black py-1 uppercase text-xs px-1 flex items-center justify-center truncate">
+            {client?.email}
+          </div>
           <div className="py-1 uppercase">Efectivo</div>
         </div>
 
