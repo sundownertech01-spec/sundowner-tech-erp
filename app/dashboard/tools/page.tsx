@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, Loader2, Wrench, MapPin, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Loader2, Wrench, MapPin, Filter, ChevronLeft, ChevronRight, UserCheck, RotateCcw } from "lucide-react";
 import ToolModal from "@/components/inventory/ToolModal";
-import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc, updateDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Swal from "sweetalert2";
 
@@ -16,6 +16,8 @@ interface Tool {
   quantity: number;
   condition: string;
   location: string;
+  status?: string;      // NUEVO: Disponible o En Uso
+  assignedTo?: string;  // NUEVO: Nombre de quién lo tiene
 }
 
 export default function ToolsPage() {
@@ -28,7 +30,7 @@ export default function ToolsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState("Todas");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Muestra 10 herramientas por página
+  const itemsPerPage = 10; 
 
   useEffect(() => {
     const q = query(collection(db, "tools"), orderBy("name", "asc"));
@@ -64,6 +66,75 @@ export default function ToolsPage() {
     }
   };
 
+  // --- NUEVA LÓGICA: PRESTAR O DEVOLVER HERRAMIENTA ---
+  const handleToggleStatus = async (tool: Tool) => {
+    const isCurrentlyInUse = tool.status === "En Uso";
+
+    if (isCurrentlyInUse) {
+      // PROCESO DE DEVOLUCIÓN
+      const result = await Swal.fire({
+        title: '¿Devolver a almacén?',
+        text: `Confirmar que ${tool.assignedTo} ha devuelto "${tool.name}".`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981', cancelButtonColor: '#374151',
+        confirmButtonText: 'Sí, recibir', cancelButtonText: 'Cancelar',
+        background: '#1f2937', color: '#fff'
+      });
+
+      if (result.isConfirmed) {
+        await updateDoc(doc(db, "tools", tool.id), {
+          status: "Disponible",
+          assignedTo: ""
+        });
+        Swal.fire({ title: '¡Recibido!', text: 'Herramienta en almacén.', icon: 'success', background: '#1f2937', color: '#fff', timer: 1500, showConfirmButton: false });
+      }
+    } else {
+      // PROCESO DE PRÉSTAMO
+      try {
+        // 1. Descargar la lista de empleados reales desde Firebase
+        const usersSnap = await getDocs(query(collection(db, "users"), orderBy("name")));
+        const userOptions: Record<string, string> = {};
+        
+        usersSnap.forEach((doc) => {
+          const userName = doc.data().name;
+          userOptions[userName] = userName; // Creamos las opciones para el select
+        });
+
+        // 2. Mostrar el Modal con el Select
+        const { value: selectedUser } = await Swal.fire({
+          title: 'Prestar Herramienta',
+          text: `¿A quién le vas a asignar "${tool.name}"?`,
+          input: 'select',
+          inputOptions: userOptions,
+          inputPlaceholder: 'Selecciona un técnico...',
+          showCancelButton: true,
+          confirmButtonColor: '#4f46e5', cancelButtonColor: '#374151',
+          confirmButtonText: 'Asignar', cancelButtonText: 'Cancelar',
+          background: '#1f2937', color: '#fff',
+          inputValidator: (value) => {
+            return new Promise((resolve) => {
+              if (value) { resolve(null); } 
+              else { resolve('Debes seleccionar a un empleado'); }
+            });
+          }
+        });
+
+        // 3. Guardar en Firebase
+        if (selectedUser) {
+          await updateDoc(doc(db, "tools", tool.id), {
+            status: "En Uso",
+            assignedTo: selectedUser
+          });
+          Swal.fire({ title: '¡Asignado!', text: `Entregado a ${selectedUser}`, icon: 'success', background: '#1f2937', color: '#fff', timer: 1500, showConfirmButton: false });
+        }
+
+      } catch (error) {
+        console.error("Error al prestar:", error);
+      }
+    }
+  };
+
   // --- LÓGICA DE FILTRADO COMBINADO ---
   const filteredTools = tools.filter((tool) => {
     const matchesSearch = tool.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -74,10 +145,8 @@ export default function ToolsPage() {
   // --- LÓGICA DE PAGINACIÓN ---
   const totalPages = Math.ceil(filteredTools.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  // Extraemos solo las herramientas de la página actual
   const paginatedTools = filteredTools.slice(startIndex, startIndex + itemsPerPage);
 
-  // Si el usuario busca algo, lo regresamos a la página 1
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, locationFilter]);
@@ -91,7 +160,7 @@ export default function ToolsPage() {
           <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
             <Wrench className="text-indigo-500" /> Herramientas y Equipo
           </h2>
-          <p className="text-sm text-slate-400">Control de activos internos de la empresa</p>
+          <p className="text-sm text-slate-400">Control de activos internos y asignaciones</p>
         </div>
         <button onClick={() => { setToolToEdit(null); setIsModalOpen(true); }} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20 w-full sm:w-auto justify-center">
           <Plus size={20} />
@@ -101,8 +170,6 @@ export default function ToolsPage() {
 
       {/* BARRA DE BÚSQUEDA Y FILTROS */}
       <div className="bg-slate-900 p-3 md:p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row gap-4">
-        
-        {/* Buscador de texto */}
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-slate-500" />
@@ -116,7 +183,6 @@ export default function ToolsPage() {
           />
         </div>
 
-        {/* --- AQUÍ ESTÁ EL NUEVO FILTRO POR CAJA --- */}
         <div className="relative w-full md:w-64 shrink-0">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Filter className="h-5 w-5 text-slate-500" />
@@ -155,35 +221,69 @@ export default function ToolsPage() {
               <thead className="bg-slate-800/50">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase">Herramienta</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase">Categoría</th>
                   <th className="px-6 py-4 text-center text-xs font-semibold text-slate-300 uppercase">Ubicación</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-300 uppercase">Estado</th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-300 uppercase">Cant.</th>
+                  {/* NUEVA COLUMNA DE DISPONIBILIDAD */}
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-300 uppercase">Disponibilidad</th>
+                  <th className="px-6 py-4 text-center text-xs font-semibold text-slate-300 uppercase">Condición</th>
                   <th className="px-6 py-4 text-right text-xs font-semibold text-slate-300 uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                
-                {/* --- AQUÍ USAMOS PAGINATED TOOLS PARA QUE SOLO MUESTRE 10 --- */}
-                {paginatedTools.map((tool) => (
-                  <tr key={tool.id} className="hover:bg-slate-800/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm font-medium text-white">{tool.name}</div></td>
-                    <td className="px-6 py-4 whitespace-nowrap"><span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-800 text-slate-300 border border-slate-700">{tool.category}</span></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-indigo-300 font-medium">{tool.location || "Sin asignar"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tool.condition === 'Mala' ? 'bg-red-500/10 text-red-400' : tool.condition === 'Regular' ? 'bg-orange-500/10 text-orange-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                        {tool.condition}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center"><span className="text-sm font-bold text-white">{tool.quantity}</span></td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end gap-3">
-                        <button onClick={() => { setToolToEdit(tool); setIsModalOpen(true); }} className="text-slate-400 hover:text-indigo-400 transition-colors"><Edit className="w-5 h-5" /></button>
-                        <button onClick={() => handleDelete(tool.id, tool.name)} className="text-slate-400 hover:text-red-400 transition-colors"><Trash2 className="w-5 h-5" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {paginatedTools.map((tool) => {
+                  const isAvailable = tool.status !== "En Uso";
+                  
+                  return (
+                    <tr key={tool.id} className="hover:bg-slate-800/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-white">{tool.name}</div>
+                        <div className="text-xs text-slate-500 mt-1">{tool.category}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-indigo-300 font-medium">
+                        {tool.location || "Sin asignar"}
+                      </td>
+                      
+                      {/* ESTADO DE PRÉSTAMO */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isAvailable ? (
+                          <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            Disponible
+                          </span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            <span className="w-fit px-2.5 py-1 text-xs font-semibold rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                              En Uso
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium ml-1">por {tool.assignedTo}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tool.condition === 'Mala' ? 'text-red-400' : tool.condition === 'Regular' ? 'text-yellow-400' : 'text-slate-300'}`}>
+                          {tool.condition}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end gap-3">
+                          
+                          {/* BOTÓN DE ASIGNAR / DEVOLVER */}
+                          <button 
+                            onClick={() => handleToggleStatus(tool)} 
+                            className={`p-1.5 rounded-lg transition-colors ${isAvailable ? 'text-indigo-400 hover:bg-indigo-500/20' : 'text-emerald-400 hover:bg-emerald-500/20'}`}
+                            title={isAvailable ? "Prestar Herramienta" : "Registrar Devolución"}
+                          >
+                            {isAvailable ? <UserCheck className="w-5 h-5" /> : <RotateCcw className="w-5 h-5" />}
+                          </button>
+
+                          <div className="w-px h-6 bg-slate-700 my-auto"></div>
+
+                          <button onClick={() => { setToolToEdit(tool); setIsModalOpen(true); }} className="text-slate-400 hover:text-indigo-400 transition-colors" title="Editar Detalles"><Edit className="w-5 h-5" /></button>
+                          <button onClick={() => handleDelete(tool.id, tool.name)} className="text-slate-400 hover:text-red-400 transition-colors" title="Eliminar"><Trash2 className="w-5 h-5" /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -192,28 +292,53 @@ export default function ToolsPage() {
         {/* --- VISTA PARA MÓVIL --- */}
         {!isLoading && filteredTools.length > 0 && (
           <div className="md:hidden divide-y divide-slate-800 min-h-[300px]">
-            {paginatedTools.map((tool) => (
-              <div key={tool.id} className="p-4 space-y-3 hover:bg-slate-800/30 transition-colors">
-                <div className="flex justify-between items-start gap-2">
-                  <div className="flex-1">
-                    <h4 className="text-sm font-bold text-white leading-tight">{tool.name}</h4>
-                    <div className="mt-1.5 flex flex-wrap gap-2">
-                      <span className="inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-800 text-slate-300 border border-slate-700">{tool.category}</span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"><MapPin size={10} /> {tool.location || "Sin asignar"}</span>
+            {paginatedTools.map((tool) => {
+              const isAvailable = tool.status !== "En Uso";
+
+              return (
+                <div key={tool.id} className="p-4 space-y-3 hover:bg-slate-800/30 transition-colors">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1">
+                      <h4 className="text-sm font-bold text-white leading-tight">{tool.name}</h4>
+                      <div className="mt-1.5 flex flex-wrap gap-2">
+                        <span className="inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-800 text-slate-300 border border-slate-700">{tool.category}</span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"><MapPin size={10} /> {tool.location || "Sin asignar"}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      
+                      {/* BOTONES MÓVIL */}
+                      <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1 border border-slate-700/50">
+                        <button 
+                          onClick={() => handleToggleStatus(tool)} 
+                          className={`p-1.5 rounded-md ${isAvailable ? 'text-indigo-400' : 'text-emerald-400'}`}
+                        >
+                          {isAvailable ? <UserCheck className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+                        </button>
+                        <div className="w-px h-4 bg-slate-700"></div>
+                        <button onClick={() => { setToolToEdit(tool); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-indigo-400 rounded-md"><Edit className="w-4 h-4" /></button>
+                        <div className="w-px h-4 bg-slate-700"></div>
+                        <button onClick={() => handleDelete(tool.id, tool.name)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-md"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1 border border-slate-700/50 shrink-0">
-                    <button onClick={() => { setToolToEdit(tool); setIsModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-indigo-400 rounded-md"><Edit className="w-4 h-4" /></button>
-                    <div className="w-px h-4 bg-slate-700"></div>
-                    <button onClick={() => handleDelete(tool.id, tool.name)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-md"><Trash2 className="w-4 h-4" /></button>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-800/50">
+                    <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${tool.condition === 'Mala' ? 'text-red-400' : tool.condition === 'Regular' ? 'text-yellow-400' : 'text-slate-400'}`}>Condición: {tool.condition}</span>
+                    
+                    {/* ETIQUETA DISPONIBILIDAD MÓVIL */}
+                    {isAvailable ? (
+                      <span className="text-[10px] font-bold text-emerald-400">● Disponible</span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-orange-400 truncate max-w-[120px]">
+                        ● En uso: {tool.assignedTo}
+                      </span>
+                    )}
+
                   </div>
                 </div>
-                <div className="flex items-center justify-between pt-1">
-                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${tool.condition === 'Mala' ? 'bg-red-500/10 text-red-400' : tool.condition === 'Regular' ? 'bg-orange-500/10 text-orange-400' : 'bg-emerald-500/10 text-emerald-400'}`}>Estado: {tool.condition}</span>
-                  <span className="text-sm font-bold text-white">{tool.quantity} pz</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
