@@ -43,7 +43,7 @@ export default function DashboardPage() {
         sevenDaysAgo.setHours(0, 0, 0, 0);
 
         // Preparamos el esqueleto de los últimos 7 días
-        const last7DaysData = [];
+        const last7DaysData: { dateStr: string; name: string; total: number }[] = [];
         for (let i = 6; i >= 0; i--) {
           const d = new Date();
           d.setDate(startOfToday.getDate() - i);
