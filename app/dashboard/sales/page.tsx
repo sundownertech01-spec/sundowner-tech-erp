@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link"; // <-- IMPORTANTE PARA EL BOTÓN DE IMPRIMIR
 import {
   FileText,
   ShoppingCart,
@@ -9,9 +10,10 @@ import {
   Calendar,
   DollarSign,
   Loader2,
-  Trash2, // <-- NUEVO ICONO
+  Trash2,
   Edit,
-  Plus    // <-- NUEVO ICONO
+  Plus,
+  Printer // <-- NUEVO ICONO DE IMPRESORA
 } from "lucide-react";
 import NewSaleModal from "@/components/sales/NewSaleModal";
 import NewQuoteModal from "@/components/sales/NewQuoteModal";
@@ -22,19 +24,18 @@ import {
   limit,
   onSnapshot,
   doc,
-  runTransaction // <-- IMPORTANTE PARA DEVOLVER STOCK
+  runTransaction
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Swal from "sweetalert2";
 
-// Interfaz actualizada para incluir los items
 interface SaleRecord {
   id: string;
   type: "venta" | "servicio" | "cotizacion";
   clientName: string;
   total: number;
   date: any; 
-  items?: any[]; // Guardamos los items para saber qué devolver al inventario
+  items?: any[];
   description?: string;
 }
 
@@ -45,14 +46,13 @@ export default function SalesPage() {
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Estados para saber qué estamos editando (Próximo paso)
   const [saleToEdit, setSaleToEdit] = useState<SaleRecord | null>(null);
 
   useEffect(() => {
     const q = query(
       collection(db, "sales"),
       orderBy("date", "desc"),
-      limit(50), // Aumenté un poco el límite para ver más historial
+      limit(50),
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const salesData = snapshot.docs.map(
@@ -64,7 +64,6 @@ export default function SalesPage() {
     return () => unsubscribe();
   }, []);
 
-  // --- LÓGICA MAESTRA PARA ELIMINAR Y DEVOLVER STOCK ---
   const handleDelete = async (sale: SaleRecord) => {
     try {
       const result = await Swal.fire({
@@ -83,23 +82,19 @@ export default function SalesPage() {
       });
 
       if (result.isConfirmed) {
-        setIsLoading(true); // Ponemos la pantalla en carga mientras procesa
+        setIsLoading(true);
 
         await runTransaction(db, async (transaction) => {
-          // 1. Si es una VENTA de productos, leemos el stock actual para devolverlo
           if (sale.type === "venta" && sale.items && sale.items.length > 0) {
-            
             const productUpdates = [];
 
-            // Leer todos los productos involucrados
             for (const item of sale.items) {
-              if (item.id) { // Solo si tiene ID (es un producto real del catálogo)
+              if (item.id) { 
                 const productRef = doc(db, "products", item.id);
                 const productDoc = await transaction.get(productRef);
                 
                 if (productDoc.exists()) {
                   const currentStock = productDoc.data().stock || 0;
-                  // Preparamos la suma: Stock actual + Lo que se había vendido
                   productUpdates.push({
                     ref: productRef,
                     newStock: currentStock + item.quantity
@@ -108,13 +103,11 @@ export default function SalesPage() {
               }
             }
 
-            // Aplicar las devoluciones al inventario
             for (const update of productUpdates) {
               transaction.update(update.ref, { stock: update.newStock });
             }
           }
 
-          // 2. Finalmente, eliminamos el documento de la venta/cotización
           const saleRef = doc(db, "sales", sale.id);
           transaction.delete(saleRef);
         });
@@ -138,7 +131,6 @@ export default function SalesPage() {
   };
 
   const handleEdit = (sale: SaleRecord) => {
-    // AQUÍ CONECTAREMOS EL MODO EDICIÓN MÁS ADELANTE
     setSaleToEdit(sale);
     if (sale.type === "cotizacion") {
       setIsQuoteModalOpen(true);
@@ -158,7 +150,6 @@ export default function SalesPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* ENCABEZADO */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
@@ -188,7 +179,6 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* BARRA DE BÚSQUEDA */}
       <div className="bg-slate-900 p-3 md:p-4 rounded-xl border border-slate-800">
         <div className="relative w-full">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -204,10 +194,8 @@ export default function SalesPage() {
         </div>
       </div>
 
-      {/* TABLA DE HISTORIAL */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden relative">
         
-        {/* OVERLAY DE CARGA PARA CUANDO ESTÁ ELIMINANDO/DEVOLVIENDO STOCK */}
         {isLoading && (
           <div className="absolute inset-0 z-10 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-slate-400">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-2" />
@@ -258,6 +246,17 @@ export default function SalesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-3">
+                          
+                          {/* BOTÓN DE IMPRIMIR - PC */}
+                          <Link 
+                            href={`/dashboard/sales/print/${sale.id}`} 
+                            target="_blank" 
+                            className="text-slate-400 hover:text-blue-400 transition-colors" 
+                            title="Imprimir Documento"
+                          >
+                            <Printer className="w-5 h-5" />
+                          </Link>
+
                           <button onClick={() => handleEdit(sale)} className="text-slate-400 hover:text-indigo-400 transition-colors" title="Editar / Ver Detalles">
                             <Edit className="w-5 h-5" />
                           </button>
@@ -285,6 +284,18 @@ export default function SalesPage() {
                     </div>
                     {/* BOTONES DE ACCIÓN MÓVIL */}
                     <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1 border border-slate-700/50 shrink-0">
+                      
+                      {/* BOTÓN DE IMPRIMIR - MÓVIL */}
+                      <Link 
+                        href={`/dashboard/sales/print/${sale.id}`} 
+                        target="_blank" 
+                        className="p-1.5 text-slate-400 hover:text-blue-400 rounded-md"
+                        title="Imprimir"
+                      >
+                        <Printer className="w-4 h-4" />
+                      </Link>
+                      
+                      <div className="w-px h-4 bg-slate-700"></div>
                       <button onClick={() => handleEdit(sale)} className="p-1.5 text-slate-400 hover:text-indigo-400 rounded-md"><Edit className="w-4 h-4" /></button>
                       <div className="w-px h-4 bg-slate-700"></div>
                       <button onClick={() => handleDelete(sale)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-md"><Trash2 className="w-4 h-4" /></button>
@@ -314,7 +325,6 @@ export default function SalesPage() {
 
       <NewSaleModal isOpen={isSaleModalOpen} onClose={() => setIsSaleModalOpen(false)} />
       
-      {/* Pasamos el saleToEdit al modal de cotización para poder editarlo después */}
       <NewQuoteModal isOpen={isQuoteModalOpen} onClose={() => setIsQuoteModalOpen(false)} />
     </div>
   );
