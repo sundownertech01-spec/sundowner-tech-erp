@@ -7,12 +7,15 @@ import {
   FileText,
   ShoppingCart,
   Search,
-  DollarSign, // Puedes quitar Calendar si ya no lo usas, pero no estorba
+  DollarSign,
   Loader2,
   Trash2,
   Edit,
   Plus,
-  Printer
+  Printer,
+  Filter,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import NewSaleModal from "@/components/sales/NewSaleModal";
 import NewQuoteModal from "@/components/sales/NewQuoteModal";
@@ -39,19 +42,23 @@ interface SaleRecord {
 }
 
 export default function SalesPage() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [saleToEdit, setSaleToEdit] = useState<SaleRecord | null>(null);
+
+  // --- ESTADOS PARA BUSCADOR, FILTRO Y PAGINACIÓN ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("Todos");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Muestra 10 registros por página
 
   useEffect(() => {
     const q = query(
       collection(db, "sales"),
       orderBy("date", "desc"),
-      limit(50),
+      limit(100), // Aumentamos el límite de descarga para la paginación
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const salesData = snapshot.docs.map(
@@ -63,17 +70,11 @@ export default function SalesPage() {
     return () => unsubscribe();
   }, []);
 
-  // --- EL ESCUDO ANTI-CRASHES ---
-  // Esta función revisa cómo viene la fecha y la formatea sin romper la página
   const formatSafeDate = (dateObj: any) => {
     if (!dateObj) return "Sin fecha";
-    
-    // 1. Si es el formato nuevo (Timestamp de Firebase)
     if (typeof dateObj.toDate === 'function') {
       return dateObj.toDate().toLocaleDateString("es-MX", { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
     }
-    
-    // 2. Si es un dato viejo (texto o número)
     try {
       return new Date(dateObj).toLocaleDateString("es-MX", { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
     } catch (e) {
@@ -161,13 +162,27 @@ export default function SalesPage() {
     }
   };
 
-  // Escudo anti-crash para la búsqueda (por si clientName viene vacío)
-  const filteredSales = sales.filter((sale) =>
-    (sale.clientName || "").toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // --- LÓGICA DE FILTRADO COMBINADO ---
+  const filteredSales = sales.filter((sale) => {
+    const matchesSearch = (sale.clientName || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = typeFilter === "Todos" || sale.type === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  // --- LÓGICA DE PAGINACIÓN ---
+  const totalPages = Math.ceil(filteredSales.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedSales = filteredSales.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset a la página 1 si cambia la búsqueda o el filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, typeFilter]);
 
   return (
     <div className="space-y-4 md:space-y-6">
+      
+      {/* ENCABEZADO */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
@@ -197,21 +212,42 @@ export default function SalesPage() {
         </div>
       </div>
 
-      <div className="bg-slate-900 p-3 md:p-4 rounded-xl border border-slate-800">
-        <div className="relative w-full">
+      {/* BARRA DE BÚSQUEDA Y FILTROS */}
+      <div className="bg-slate-900 p-3 md:p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row gap-4">
+        
+        {/* Buscador de texto */}
+        <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-slate-500" />
           </div>
           <input
             type="text"
             placeholder="Buscar reporte por cliente..."
-            className="block w-full pl-10 pr-3 py-2 border border-slate-700 rounded-lg bg-slate-800 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-colors"
+            className="block w-full pl-10 pr-3 py-2.5 border border-slate-700 rounded-lg bg-slate-800 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-colors"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+
+        {/* Filtro por Tipo de Documento */}
+        <div className="relative w-full md:w-64 shrink-0">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Filter className="h-5 w-5 text-slate-500" />
+          </div>
+          <select 
+            className="block w-full pl-10 pr-3 py-2.5 border border-slate-700 rounded-lg bg-slate-800 text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-colors appearance-none cursor-pointer"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option value="Todos">Todos los Registros</option>
+            <option value="venta">Solo Ventas</option>
+            <option value="servicio">Solo Servicios</option>
+            <option value="cotizacion">Solo Cotizaciones</option>
+          </select>
+        </div>
       </div>
 
+      {/* TABLA DE HISTORIAL */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden relative">
         
         {isLoading && (
@@ -230,7 +266,7 @@ export default function SalesPage() {
         {!isLoading && filteredSales.length > 0 && (
           <>
             {/* VISTA PC */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto min-h-[400px]">
               <table className="min-w-full divide-y divide-slate-800">
                 <thead className="bg-slate-800/50">
                   <tr>
@@ -242,10 +278,9 @@ export default function SalesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {filteredSales.map((sale) => (
+                  {paginatedSales.map((sale) => (
                     <tr key={sale.id} className="hover:bg-slate-800/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
-                        {/* USAMOS EL ESCUDO AQUÍ */}
                         {formatSafeDate(sale.date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
@@ -261,7 +296,6 @@ export default function SalesPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-white">
-                        {/* ESCUDO PARA EL TOTAL */}
                         ${(sale.total || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -291,14 +325,13 @@ export default function SalesPage() {
             </div>
 
             {/* VISTA MOVIL */}
-            <div className="md:hidden divide-y divide-slate-800">
-              {filteredSales.map((sale) => (
+            <div className="md:hidden divide-y divide-slate-800 min-h-[300px]">
+              {paginatedSales.map((sale) => (
                 <div key={sale.id} className="p-4 space-y-3 hover:bg-slate-800/30">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-bold text-white">{sale.clientName || "Sin nombre"}</h4>
                       <span className="text-xs text-slate-500 block mt-0.5">
-                        {/* USAMOS EL ESCUDO AQUÍ */}
                         {formatSafeDate(sale.date)}
                       </span>
                     </div>
@@ -328,22 +361,47 @@ export default function SalesPage() {
                       {(sale.type || "Desconocido").toUpperCase()}
                     </span>
                     <span className="text-sm font-bold text-emerald-400">
-                       {/* ESCUDO PARA EL TOTAL */}
                       ${(sale.total || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* --- CONTROLES DE PAGINACIÓN --- */}
+            <div className="px-4 md:px-6 py-4 border-t border-slate-800 bg-slate-800/40 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <span className="text-xs text-slate-400 font-medium">
+                Mostrando {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredSales.length)} de {filteredSales.length} registros
+              </span>
+              
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 text-xs font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft size={16} /> Anterior
+                </button>
+                
+                <div className="text-xs font-bold text-white px-3 py-1.5 bg-indigo-600 rounded-lg shadow-lg">
+                  {currentPage} / {totalPages || 1}
+                </div>
+
+                <button 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 text-xs font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Siguiente <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
           </>
         )}
-        <div className="px-4 md:px-6 py-3 border-t border-slate-800 bg-slate-800/20 text-xs text-slate-400 flex justify-between items-center">
-          <span>Mostrando los últimos {filteredSales.length} registros</span>
-        </div>
       </div>
 
       <NewSaleModal isOpen={isSaleModalOpen} onClose={() => setIsSaleModalOpen(false)} />
-      
       <NewQuoteModal isOpen={isQuoteModalOpen} onClose={() => setIsQuoteModalOpen(false)} />
     </div>
   );

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, AlertCircle, Loader2 } from "lucide-react";
+import { Plus, Search, Edit, Trash2, AlertCircle, Loader2, Filter, ChevronLeft, ChevronRight } from "lucide-react";
 import ProductModal from "@/components/inventory/ProductModal";
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -20,11 +20,16 @@ interface Product {
 }
 
 export default function InventoryPage() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // --- ESTADOS PARA BUSCADOR, FILTRO Y PAGINACIÓN ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("Todas");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Muestra 10 productos por página
 
   useEffect(() => {
     const q = query(collection(db, "products"), orderBy("name", "asc"));
@@ -69,10 +74,26 @@ export default function InventoryPage() {
     }
   };
 
-  const filteredProducts = products.filter((product) => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // --- EXTRAER CATEGORÍAS ÚNICAS PARA EL FILTRO ---
+  const uniqueCategories = ["Todas", ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
+
+  // --- LÓGICA DE FILTRADO COMBINADO ---
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = categoryFilter === "Todas" || product.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+
+  // --- LÓGICA DE PAGINACIÓN ---
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset a la página 1 si cambia la búsqueda o el filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -94,26 +115,44 @@ export default function InventoryPage() {
         </button>
       </div>
 
-      {/* BARRA DE BÚSQUEDA */}
-      <div className="bg-slate-900 p-3 md:p-4 rounded-xl border border-slate-800">
-        <div className="relative w-full">
+      {/* BARRA DE BÚSQUEDA Y FILTROS */}
+      <div className="bg-slate-900 p-3 md:p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row gap-4">
+        
+        {/* Buscador de texto */}
+        <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-5 w-5 text-slate-500" />
           </div>
           <input 
             type="text" 
             placeholder="Buscar por nombre o SKU..." 
-            className="block w-full pl-10 pr-3 py-2 border border-slate-700 rounded-lg bg-slate-800 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-colors" 
+            className="block w-full pl-10 pr-3 py-2.5 border border-slate-700 rounded-lg bg-slate-800 text-slate-300 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-colors" 
             value={searchTerm} 
             onChange={(e) => setSearchTerm(e.target.value)} 
           />
         </div>
+
+        {/* Filtro por Categoría Dinámico */}
+        <div className="relative w-full md:w-64 shrink-0">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Filter className="h-5 w-5 text-slate-500" />
+          </div>
+          <select 
+            className="block w-full pl-10 pr-3 py-2.5 border border-slate-700 rounded-lg bg-slate-800 text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-colors appearance-none cursor-pointer"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            {uniqueCategories.map((cat, index) => (
+              <option key={index} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+
       </div>
 
       {/* CONTENEDOR PRINCIPAL DE LOS DATOS */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 shadow-xl overflow-hidden">
         
-        {/* ESTADOS DE CARGA Y VACÍO (Compartidos para PC y Móvil) */}
         {isLoading && (
           <div className="p-12 flex flex-col items-center justify-center text-slate-400">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-2" />
@@ -127,10 +166,9 @@ export default function InventoryPage() {
           </div>
         )}
 
-        {/* --- VISTA PARA PC (TABLA) --- 
-            La clase "hidden md:block" oculta esto en celulares */}
+        {/* --- VISTA PARA PC (TABLA) --- */}
         {!isLoading && filteredProducts.length > 0 && (
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto min-h-[400px]">
             <table className="min-w-full divide-y divide-slate-800">
               <thead className="bg-slate-800/50">
                 <tr>
@@ -142,7 +180,7 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {filteredProducts.map((product) => (
+                {paginatedProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-white">{product.name}</div>
@@ -158,10 +196,10 @@ export default function InventoryPage() {
                       <div className="flex items-center justify-center gap-2">
                         <span className={`text-sm font-bold ${product.stock <= product.minStock ? 'text-red-400' : 'text-white'}`}>{product.stock}</span>
                         {product.stock <= product.minStock && (
-  <span title="Stock bajo" className="flex items-center">
-    <AlertCircle className="w-4 h-4 text-red-400" />
-  </span>
-)}
+                          <span title="Stock bajo" className="flex items-center">
+                            <AlertCircle className="w-4 h-4 text-red-400" />
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -181,14 +219,11 @@ export default function InventoryPage() {
           </div>
         )}
 
-        {/* --- VISTA PARA MÓVIL (TARJETAS) --- 
-            La clase "md:hidden" oculta esto en PC */}
+        {/* --- VISTA PARA MÓVIL (TARJETAS) --- */}
         {!isLoading && filteredProducts.length > 0 && (
-          <div className="md:hidden divide-y divide-slate-800">
-            {filteredProducts.map((product) => (
+          <div className="md:hidden divide-y divide-slate-800 min-h-[300px]">
+            {paginatedProducts.map((product) => (
               <div key={product.id} className="p-4 space-y-3 hover:bg-slate-800/30 transition-colors">
-                
-                {/* Nombre y Botones */}
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1">
                     <h4 className="text-sm font-bold text-white leading-tight">{product.name}</h4>
@@ -204,18 +239,14 @@ export default function InventoryPage() {
                     </button>
                   </div>
                 </div>
-
-                {/* Detalles: Categoría, Precio, Stock */}
                 <div className="flex items-center justify-between pt-1">
                   <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-slate-800 text-slate-300 border border-slate-700">
                     {product.category}
                   </span>
-                  
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-bold text-emerald-400">
                       ${product.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </span>
-                    
                     <div className="flex items-center gap-1 bg-slate-800/50 px-2 py-0.5 rounded-md border border-slate-700/50">
                       <span className={`text-xs font-bold ${product.stock <= product.minStock ? 'text-red-400' : 'text-slate-300'}`}>
                         {product.stock} pz
@@ -226,16 +257,42 @@ export default function InventoryPage() {
                     </div>
                   </div>
                 </div>
-
               </div>
             ))}
           </div>
         )}
 
-        {/* FOOTER */}
-        <div className="px-4 md:px-6 py-3 border-t border-slate-800 bg-slate-800/20 text-xs text-slate-400 flex justify-between items-center">
-          <span>Mostrando {filteredProducts.length} {filteredProducts.length === 1 ? 'producto' : 'productos'}</span>
-        </div>
+        {/* --- CONTROLES DE PAGINACIÓN --- */}
+        {!isLoading && filteredProducts.length > 0 && (
+          <div className="px-4 md:px-6 py-4 border-t border-slate-800 bg-slate-800/40 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span className="text-xs text-slate-400 font-medium">
+              Mostrando {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredProducts.length)} de {filteredProducts.length} productos
+            </span>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 text-xs font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={16} /> Anterior
+              </button>
+              
+              <div className="text-xs font-bold text-white px-3 py-1.5 bg-indigo-600 rounded-lg shadow-lg">
+                {currentPage} / {totalPages || 1}
+              </div>
+
+              <button 
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages || totalPages === 0}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 text-xs font-medium hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Siguiente <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
 
       <ProductModal 
