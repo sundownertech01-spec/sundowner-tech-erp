@@ -6,8 +6,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import {
-  LayoutDashboard, Package, ShoppingCart, Users,
-  Settings, LogOut, Menu, X, Wrench, ShieldCheck, Wallet,
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Users,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+  Wrench,
+  ShieldCheck,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import Swal from "sweetalert2";
@@ -20,19 +29,17 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
   
   const { role } = useAuth();
 
-  // TODOS TIENEN ACCESO A TODO, EXCEPTO "USUARIOS" QUE ES SOLO ADMIN
   const allMenuItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["admin", "practicante"] },
     { name: "Inventario", href: "/dashboard/inventory", icon: Package, roles: ["admin", "practicante"] },
     { name: "Herramientas", href: "/dashboard/tools", icon: Wrench, roles: ["admin", "practicante"] },
     { name: "Ventas", href: "/dashboard/sales", icon: ShoppingCart, roles: ["admin", "practicante"] },
     { name: "Clientes", href: "/dashboard/clients", icon: Users, roles: ["admin", "practicante"] },
-    { name: "Usuarios", href: "/dashboard/users", icon: ShieldCheck, roles: ["admin"] }, // <--- RESTRICCIÓN
+    { name: "Usuarios", href: "/dashboard/users", icon: ShieldCheck, roles: ["admin"] }, 
     { name: "Configuración", href: "/dashboard/settings", icon: Settings, roles: ["admin", "practicante"] },
     { name: "Gastos", href: "/dashboard/expenses", icon: Wallet, roles: ["admin", "practicante"] },
   ];
 
-  // Filtramos el menú
   const menuItems = allMenuItems.filter((item) => item.roles.includes(role || "practicante"));
 
   const handleLogout = async () => {
@@ -58,10 +65,12 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 text-white">
-      {/* SIDEBAR PC */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800">
-        <div className="p-6 border-b border-slate-800">
+    // SOLUCIÓN 1: Agregamos w-full y overflow-hidden aquí para bloquear el scroll del navegador
+    <div className="flex h-screen w-full overflow-hidden bg-slate-950 text-white">
+      
+      {/* --- SIDEBAR PARA DESKTOP --- */}
+      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 h-full">
+        <div className="p-6 border-b border-slate-800 shrink-0">
           <h1 className="text-2xl font-bold text-indigo-500">Sundowner<span className="text-white">ERP</span></h1>
           <p className="text-xs text-slate-500 mt-1">Gestión Empresarial</p>
           <div className="mt-3 inline-block px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md">
@@ -71,7 +80,8 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        {/* SOLUCIÓN 2: overflow-y-auto aquí para que la barra de botones se deslice sola si hay muchos */}
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -83,16 +93,16 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 shrink-0 bg-slate-900">
           <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
             <LogOut size={20} /><span>Cerrar Sesión</span>
           </button>
         </div>
       </aside>
 
-      {/* HEADER Y MENÚ MÓVIL */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 relative z-50">
+      {/* --- HEADER Y MENÚ MÓVIL --- */}
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+        <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 shrink-0 z-50">
           <div>
             <h1 className="text-xl font-bold text-indigo-500">Sundowner<span className="text-white">ERP</span></h1>
             <span className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider block mt-0.5">
@@ -123,6 +133,7 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
+        {/* ESTE ES EL CONTENEDOR QUE DEBE HACER SCROLL (El panel derecho) */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-950">
           {children}
         </main>
