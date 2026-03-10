@@ -2,11 +2,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+// 1. IMPORTAMOS EL HOOK DEL ROUTER PARA REDIRIGIR INTRUSOS
+import { useRouter } from "next/navigation"; 
 import { UserPlus, Search, Edit, Trash2, Loader2, ShieldCheck, Mail } from "lucide-react";
 import UserModal from "@/components/users/UserModal";
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Swal from "sweetalert2";
+// 2. IMPORTAMOS EL GAFETE DE SEGURIDAD
+import { useAuth } from "@/context/AuthContext";
 
 interface AppUser {
   id: string;
@@ -22,6 +26,25 @@ export default function UsersPage() {
   const [userToEdit, setUserToEdit] = useState<AppUser | null>(null);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // --- SEGURIDAD DE LA PÁGINA ---
+  const { role, isLoadingAuth } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Si ya terminó de cargar la auth y resulta que ES PRACTICANTE, ¡lo expulsamos!
+    if (!isLoadingAuth && role === "practicante") {
+      Swal.fire({
+        icon: 'error',
+        title: 'Acceso Denegado',
+        text: 'No tienes permisos para ver esta sección.',
+        background: '#1f2937', color: '#fff',
+        showConfirmButton: false, timer: 2000
+      });
+      router.push("/dashboard"); 
+    }
+  }, [role, isLoadingAuth, router]);
+  // ------------------------------
 
   useEffect(() => {
     const q = query(collection(db, "users"), orderBy("name", "asc"));
@@ -61,6 +84,15 @@ export default function UsersPage() {
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Si está cargando la seguridad o es practicante (en proceso de expulsión), no dibujamos la pantalla
+  if (isLoadingAuth || role === "practicante") {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -113,13 +145,13 @@ export default function UsersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {/* NUEVOS COLORES PARA LOS ROLES */}
+                      {/* ETIQUETAS ACTUALIZADAS: "admin" y "practicante" */}
                       <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${
-                        user.role === 'Administrador' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                        user.role === 'Practicante' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                        'bg-slate-500/10 text-slate-400 border-slate-500/20' // Invitado (Gris)
+                        user.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                        user.role === 'practicante' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                        'bg-slate-500/10 text-slate-400 border-slate-500/20' 
                       }`}>
-                        {user.role}
+                        {user.role === 'admin' ? 'Administrador' : user.role === 'practicante' ? 'Practicante' : user.role}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -151,11 +183,11 @@ export default function UsersPage() {
                   <div className="flex-1">
                     <h4 className="text-sm font-bold text-white leading-tight">{user.name}</h4>
                     <span className={`inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold rounded-md border ${
-                        user.role === 'Administrador' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                        user.role === 'Practicante' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                        user.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                        user.role === 'practicante' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                         'bg-slate-500/10 text-slate-400 border-slate-500/20'
                       }`}>
-                      {user.role}
+                      {user.role === 'admin' ? 'Administrador' : user.role === 'practicante' ? 'Practicante' : user.role}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 bg-slate-800/50 rounded-lg p-1 border border-slate-700/50">
