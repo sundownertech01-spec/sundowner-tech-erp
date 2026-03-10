@@ -24,3 +24,55 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* global.css */
+
+/* =========================================
+   ESTILIZADO PROFESIONAL DE BARRA DE DESPLAZAMIENTO
+   (Para Chrome, Safari, Edge, etc.)
+   ========================================= */
+
+/* 1. Definir el ancho y alto (para barras horizontales) de la barra */
+::-webkit-scrollbar {
+  width: 10px; /* Un poco más delgada, pero fácil de agarrar */
+  height: 10px;
+}
+
+/* 2. Ocultar los botones de flecha arriba/abajo (lo que las hace ver viejas) */
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+/* 3. Estilizar la pista (track) - el fondo de la barra.
+   Lo hacemos transparente para que se integre con tu fondo oscuro */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 4. Estilizar el control deslizante (thumb) - la parte que mueves.
+   Usamos un color morado de acento semitransparente con bordes redondeados */
+::-webkit-scrollbar-thumb {
+  background-color: rgba(99, 102, 241, 0.2); /* Morado de acento con opacidad al 20% */
+  border-radius: 10px; /* Bordes redondeados y modernos */
+  border: 2px solid transparent; /* Espacio alrededor del control deslizante */
+  background-clip: padding-box; /* Asegura que el borde sea transparente */
+  transition: background-color 0.3s ease; /* Transición suave */
+}
+
+/* 5. Efecto al pasar el mouse sobre el control deslizante.
+   Lo hacemos un poco más opaco para dar feedback visual */
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(99, 102, 241, 0.5); /* Más opaco al 50% */
+}
+
+/* =========================================
+   ESTILIZADO PARA FIREFOX
+   (Propiedades estándar)
+   ========================================= */
+
+/* Aplicar a todos los elementos que se desplazan */
+* {
+  scrollbar-width: thin; /* Una barra delgada */
+  /* color-control-deslizante | color-pista */
+  scrollbar-color: rgba(99, 102, 241, 0.2) transparent;
+}
