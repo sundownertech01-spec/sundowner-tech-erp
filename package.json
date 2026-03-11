@@ -9,12 +9,14 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@zxing/library": "^0.21.3",
     "firebase": "^12.8.0",
     "lucide-react": "^0.564.0",
     "next": "16.1.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1",
+    "react-zxing": "^2.1.0",
     "recharts": "^3.8.0",
     "sweetalert2": "^11.26.18"
   },
