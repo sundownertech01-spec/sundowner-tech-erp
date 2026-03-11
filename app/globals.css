@@ -76,3 +76,14 @@ body {
   /* color-control-deslizante | color-pista */
   scrollbar-color: rgba(99, 102, 241, 0.2) transparent;
 }
+/* Decirle al navegador que TODA la app es de tema oscuro 
+   (Esto arregla automáticamente los <select>, calendarios y popups nativos) */
+html {
+  color-scheme: dark;
+}
+
+/* Forzar específicamente el color de las opciones del select por si el navegador se pone terco */
+select option {
+  background-color: #1e293b !important; /* Mismo color de bg-slate-800 */
+  color: #ffffff !important;
+}
