@@ -92,16 +92,16 @@ export default function ToolsPage() {
     } else {
       // PROCESO DE PRÉSTAMO
       try {
-        // 1. Descargar la lista de empleados reales desde Firebase
+        // 1. Descargar la lista de empleados
         const usersSnap = await getDocs(query(collection(db, "users"), orderBy("name")));
         const userOptions: Record<string, string> = {};
         
         usersSnap.forEach((doc) => {
           const userName = doc.data().name;
-          userOptions[userName] = userName; // Creamos las opciones para el select
+          userOptions[userName] = userName; 
         });
 
-        // 2. Mostrar el Modal con el Select
+        // 2. Mostrar el Modal con el Select CORREGIDO
         const { value: selectedUser } = await Swal.fire({
           title: 'Prestar Herramienta',
           text: `¿A quién le vas a asignar "${tool.name}"?`,
@@ -111,7 +111,12 @@ export default function ToolsPage() {
           showCancelButton: true,
           confirmButtonColor: '#4f46e5', cancelButtonColor: '#374151',
           confirmButtonText: 'Asignar', cancelButtonText: 'Cancelar',
-          background: '#1f2937', color: '#fff',
+          background: '#1f2937', 
+          color: '#fff',
+          // 🔥 ESTO ES LO NUEVO: Forzamos estilos oscuros en el select
+          customClass: {
+            input: 'bg-slate-800 border-slate-700 text-white rounded-lg focus:ring-indigo-500',
+          },
           inputValidator: (value) => {
             return new Promise((resolve) => {
               if (value) { resolve(null); } 
