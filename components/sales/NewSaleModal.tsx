@@ -53,6 +53,10 @@ export default function NewSaleModal({ isOpen, onClose }: NewSaleModalProps) {
   // --- LÓGICA DEL ESCÁNER ---
   const { ref: videoRef } = useZxing({
     paused: !isScanning, // Solo escanea cuando está activo
+    
+    // ¡AQUÍ ESTÁ LA MAGIA! Forzamos la cámara trasera para tener auto-enfoque
+    constraints: { video: { facingMode: "environment" } },
+    
     onDecodeResult(result) {
       const code = result.getText();
       const now = Date.now();
