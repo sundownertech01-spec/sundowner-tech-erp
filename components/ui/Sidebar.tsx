@@ -17,6 +17,7 @@ import {
   Wrench,
   ShieldCheck,
   Wallet,
+  ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
 import Swal from "sweetalert2";
@@ -33,11 +34,12 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["admin", "practicante"] },
     { name: "Inventario", href: "/dashboard/inventory", icon: Package, roles: ["admin", "practicante"] },
     { name: "Herramientas", href: "/dashboard/tools", icon: Wrench, roles: ["admin", "practicante"] },
+    { name: "Servicios", href: "/dashboard/services", icon: ClipboardList, roles: ["admin", "practicante"] },
     { name: "Ventas", href: "/dashboard/sales", icon: ShoppingCart, roles: ["admin", "practicante"] },
-    { name: "Clientes", href: "/dashboard/clients", icon: Users, roles: ["admin", "practicante"] },
-    { name: "Usuarios", href: "/dashboard/users", icon: ShieldCheck, roles: ["admin"] }, 
-    { name: "Configuración", href: "/dashboard/settings", icon: Settings, roles: ["admin", "practicante"] },
     { name: "Gastos", href: "/dashboard/expenses", icon: Wallet, roles: ["admin", "practicante"] },
+    { name: "Clientes", href: "/dashboard/clients", icon: Users, roles: ["admin", "practicante"] },
+    { name: "Usuarios", href: "/dashboard/users", icon: ShieldCheck, roles: ["admin"] },
+    { name: "Configuración", href: "/dashboard/settings", icon: Settings, roles: ["admin", "practicante"] },
   ];
 
   const menuItems = allMenuItems.filter((item) => item.roles.includes(role || "practicante"));
