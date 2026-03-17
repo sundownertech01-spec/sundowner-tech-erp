@@ -7,7 +7,7 @@ export default function LoginPage() {
       className="relative flex items-center justify-center min-h-screen px-4 sm:px-6 lg:px-8 bg-slate-950"
       // MAGIA AQUÍ: Cargamos la imagen de fondo
       style={{
-        backgroundImage: "url('/https://siempreauto.com/pasos-para-instalar-un-gps-en-tu-carro/')", // <-- Nombre de tu imagen
+        backgroundImage: "url('/fondo-login.jpg')", // <-- Nombre de tu imagen
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
