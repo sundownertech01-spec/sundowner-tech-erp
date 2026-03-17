@@ -67,14 +67,24 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    // SOLUCIÓN 1: Agregamos w-full y overflow-hidden aquí para bloquear el scroll del navegador
-    <div className="flex h-screen w-full overflow-hidden bg-slate-950 text-white">
-      
+    // 1. CONTENEDOR PRINCIPAL CON IMAGEN DE FONDO
+    <div 
+      className="flex h-screen w-full overflow-hidden text-white relative"
+      style={{
+        backgroundImage: "url('/fondo-login.jpg')", // Usamos tu misma imagen del login
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* 2. CAPA OSCURA GLOBAL (90% de opacidad para que todo sea legible) */}
+      <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-[2px] z-0"></div>
+
       {/* --- SIDEBAR PARA DESKTOP --- */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 border-r border-slate-800 h-full">
-        <div className="p-6 border-b border-slate-800 shrink-0">
+      {/* 3. FONDO TRANSPARENTE EN EL SIDEBAR (bg-slate-900/50 y backdrop-blur-md) */}
+      <aside className="hidden md:flex flex-col w-64 border-r border-slate-800/50 h-full relative z-10 bg-slate-900/50 backdrop-blur-md">
+        <div className="p-6 border-b border-slate-800/50 shrink-0">
           <h1 className="text-2xl font-bold text-indigo-500">Sundowner<span className="text-white">ERP</span></h1>
-          <p className="text-xs text-slate-500 mt-1">Gestión Empresarial</p>
+          <p className="text-xs text-slate-400 mt-1">Gestión Empresarial</p>
           <div className="mt-3 inline-block px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md">
             <span className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider">
               Perfil: {role === "admin" ? "Administrador" : "Practicante"}
@@ -82,12 +92,11 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* SOLUCIÓN 2: overflow-y-auto aquí para que la barra de botones se deslice sola si hay muchos */}
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
             return (
-              <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}>
+              <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-800/80 hover:text-white"}`}>
                 <item.icon size={20} />
                 <span className="font-medium">{item.name}</span>
               </Link>
@@ -95,48 +104,51 @@ export default function Sidebar({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-800 shrink-0 bg-slate-900">
-          <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+        {/* Quitamos el fondo sólido de la parte inferior también */}
+        <div className="p-4 border-t border-slate-800/50 shrink-0 bg-slate-900/30">
+          <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors">
             <LogOut size={20} /><span>Cerrar Sesión</span>
           </button>
         </div>
       </aside>
 
       {/* --- HEADER Y MENÚ MÓVIL --- */}
-      <div className="flex-1 flex flex-col min-w-0 h-full">
-        <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 shrink-0 z-50">
+      <div className="flex-1 flex flex-col min-w-0 h-full relative z-10">
+        
+        {/* HEADER MÓVIL TAMBIÉN CON TRANSPARENCIA */}
+        <header className="md:hidden flex items-center justify-between p-4 border-b border-slate-800/50 shrink-0 z-50 bg-slate-900/50 backdrop-blur-md">
           <div>
             <h1 className="text-xl font-bold text-indigo-500">Sundowner<span className="text-white">ERP</span></h1>
             <span className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider block mt-0.5">
               Perfil: {role === "admin" ? "Administrador" : "Practicante"}
             </span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-300 hover:bg-slate-800/80 rounded-lg transition-colors">
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </header>
 
         {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-[72px] left-0 w-full bg-slate-900 z-40 p-4 space-y-2 animate-in slide-in-from-top-2 border-b border-slate-800 shadow-2xl">
-            <p className="text-xs text-slate-500 px-4 mb-4">Gestión Empresarial</p>
+          <div className="md:hidden absolute top-[72px] left-0 w-full bg-slate-900/95 backdrop-blur-xl z-40 p-4 space-y-2 animate-in slide-in-from-top-2 border-b border-slate-800/50 shadow-2xl">
+            <p className="text-xs text-slate-400 px-4 mb-4">Gestión Empresarial</p>
             {menuItems.map((item) => {
               const isActive = pathname === item.href;
               return (
-                <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-lg text-lg transition-all duration-200 ${isActive ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}>
+                <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-lg text-lg transition-all duration-200 ${isActive ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-800/80 hover:text-white"}`}>
                   <item.icon size={22} />{item.name}
                 </Link>
               );
             })}
-            <div className="pt-2 mt-2 border-t border-slate-800">
-              <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors font-medium">
+            <div className="pt-2 mt-2 border-t border-slate-800/50">
+              <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors font-medium">
                 <LogOut size={22} /> Cerrar Sesión
               </button>
             </div>
           </div>
         )}
 
-        {/* ESTE ES EL CONTENEDOR QUE DEBE HACER SCROLL (El panel derecho) */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-950">
+        {/* 4. ÁREA DE CONTENIDO (Sin bg-slate-950 para que sea transparente) */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </main>
       </div>
