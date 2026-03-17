@@ -64,14 +64,20 @@ export default function LoginForm() {
   return (
     // TARJETA OSCURA (bg-slate-900)
     <div className="w-full max-w-md p-8 space-y-6 bg-slate-900 rounded-xl shadow-2xl border border-slate-800">
-      <div className="text-center">
-        {/* TÍTULO BLANCO */}
-        <h2 className="text-3xl font-extrabold text-white tracking-tight">
-          SundownerTech ERP
-        </h2>
-        <p className="mt-2 text-sm text-slate-400">
-          Inicia sesión para continuar
-        </p>
+      
+      {/* SECCIÓN DEL LOGO Y BIENVENIDA */}
+      <div className="flex flex-col items-center mb-8">
+        {/* CONTENEDOR DEL LOGO CIRCULAR */}
+        <div className="w-24 h-24 mb-4 rounded-full overflow-hidden border-2 border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.2)] bg-slate-800 flex items-center justify-center p-1">
+          <img 
+            src="/logo.png" // <-- Asegúrate de que tu logo se llame así en la carpeta /public
+            alt="Sundowner Tech Logo" 
+            className="w-full h-full object-cover rounded-full"
+          />
+        </div>
+        
+        <h2 className="text-2xl font-extrabold text-white tracking-tight">Bienvenido de nuevo</h2>
+        <p className="mt-1 text-sm text-slate-400">Ingresa a tu cuenta de Sundowner ERP</p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -79,11 +85,11 @@ export default function LoginForm() {
         <div>
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-slate-300"
+            className="block text-sm font-medium text-slate-300 mb-1.5"
           >
             Correo electrónico
           </label>
-          <div className="mt-1">
+          <div>
             <input
               id="email"
               type="email"
@@ -95,11 +101,11 @@ export default function LoginForm() {
                 },
               })}
               // CLASES DE MODO OSCURO PARA EL INPUT
-              className={`block w-full px-4 py-3 bg-slate-800 border ${errors.email ? "border-red-500" : "border-slate-700"} rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
+              className={`block w-full px-4 py-3 bg-slate-800/50 border ${errors.email ? "border-red-500" : "border-slate-700"} rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
               placeholder="admin@sundowner.com"
             />
             {errors.email && (
-              <p className="mt-1 text-xs text-red-400">
+              <p className="mt-1.5 text-xs text-red-400 font-medium">
                 {errors.email.message as string}
               </p>
             )}
@@ -110,22 +116,22 @@ export default function LoginForm() {
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-slate-300"
+            className="block text-sm font-medium text-slate-300 mb-1.5"
           >
             Contraseña
           </label>
-          <div className="mt-1">
+          <div>
             <input
               id="password"
               type="password"
               {...register("password", {
                 required: "La contraseña es obligatoria",
               })}
-              className={`block w-full px-4 py-3 bg-slate-800 border ${errors.password ? "border-red-500" : "border-slate-700"} rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
+              className={`block w-full px-4 py-3 bg-slate-800/50 border ${errors.password ? "border-red-500" : "border-slate-700"} rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all`}
               placeholder="••••••••"
             />
             {errors.password && (
-              <p className="mt-1 text-xs text-red-400">
+              <p className="mt-1.5 text-xs text-red-400 font-medium">
                 {errors.password.message as string}
               </p>
             )}
@@ -133,14 +139,14 @@ export default function LoginForm() {
         </div>
 
         {/* BOTÓN NEÓN */}
-        <div>
+        <div className="pt-2">
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-lg shadow-lg shadow-indigo-500/20 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-indigo-500 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
           >
             {isLoading ? (
-              <span className="flex items-center">
+              <>
                 <svg
                   className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
                   xmlns="http://www.w3.org/2000/svg"
@@ -161,8 +167,8 @@ export default function LoginForm() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-                Conectando...
-              </span>
+                Iniciando sesión...
+              </>
             ) : (
               "Entrar al Sistema"
             )}
